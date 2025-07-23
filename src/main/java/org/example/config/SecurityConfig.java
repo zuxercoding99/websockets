@@ -122,10 +122,7 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/ws/**"),
                                 new AntPathRequestMatcher("/ws/info"))
                         .permitAll()
-                        .requestMatchers(
-                                new AntPathRequestMatcher("/app/**"),
-                                new AntPathRequestMatcher("/topic/**"))
-                        .authenticated()
+                        
                         .anyRequest().authenticated())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Necesario para ver el H2
                                                                                        // console
