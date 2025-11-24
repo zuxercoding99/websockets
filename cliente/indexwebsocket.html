@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <h1>WebSocket Demo</h1>
+    <input type="text" id="name" placeholder="User name"/>
+    <button onclick="createUser()">Create User</button>
+    <div id="output"></div>
+
+    <script>
+        let stompClient;
+        let token;
+
+        // Login para obtener el JWT
+        fetch("http://localhost:8080/api/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            credentials: "include", // Enviar cookies
+            body: JSON.stringify({
+                username: "user",
+                password: "password"
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Login failed: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            token = data.token; // Almacenar el token para solicitudes HTTP
+            console.log('JWT Token:', token);
+            if (token) {
+                connectWebSocket();
+            } else {
+                console.error('No token received from login');
+            }
+        })
+        .catch(err => console.error('Error during login:', err));
+
+        function connectWebSocket() {
+            const socket = new SockJS('http://localhost:8080/ws', null, { withCredentials: true });
+            socket.onopen = () => console.log('SockJS: Connection opened');
+            socket.onclose = (event) => console.log('SockJS: Connection closed', event);
+            socket.onerror = (error) => console.error('SockJS: Error', error);
+            stompClient = Stomp.over(socket);
+            stompClient.connect(
+                {ola: "ola"}, // No enviar Authorization, la cookie maneja la autenticación
+                () => {
+                    console.log('WebSocket conectado');
+                    stompClient.subscribe('/topic/users', message => {
+                        console.log("Mensaje recibido:", message.body);
+                        const event = JSON.parse(message.body);
+                        const output = document.getElementById('output');
+                        output.innerHTML += `<p>${event.action}: ${event.user.name} (ID: ${event.user.id})</p>`;
+                    }, error => {
+                        console.error('Error en la suscripción:', error);
+                    });
+                    console.log('Subscribed to /topic/users');
+                },
+                error => {
+                    console.error('Error al conectar WebSocket:', error);
+                }
+            );
+            console.log("Se ejecutó connectWebSocket!");
+        }
+
+        function createUser() {
+            const name = document.getElementById('name').value;
+            fetch('http://localhost:8080/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Mantener hasta que jwtFilter procese la cookie
+                },
+                credentials: "include", // Enviar cookies
+                body: JSON.stringify({ name, password: "1234" })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Create user failed: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => console.log('User created:', data))
+            .catch(err => console.error('Error creating user:', err));
+        }
+    </script>
+</body>
+</html>
