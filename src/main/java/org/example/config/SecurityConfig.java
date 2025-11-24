@@ -5,7 +5,6 @@ import org.example.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -72,7 +71,6 @@ public class SecurityConfig {
                 String path = request.getRequestURI();
                 return path.startsWith("/api/auth/") || path.startsWith("/h2-console/") || path.startsWith("/ws/info")
                         || path.startsWith("/ws/");
-                // Eliminamos /ws/**, /app/**, /topic/** para procesar WebSocket
             }
 
             @Override
@@ -103,11 +101,7 @@ public class SecurityConfig {
                 .cors(cors -> cors
                         .configurationSource(request -> {
                             CorsConfiguration config = new CorsConfiguration();
-                            config.setAllowedOrigins(List.of("http://127.0.0.1:5500", "http://localhost:5500")); // o
-                                                                                                                 // "*",
-                                                                                                                 // solo
-                                                                                                                 // para
-                                                                                                                 // desarrollo
+                            config.setAllowedOrigins(List.of("http://localhost:5500"));
                             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                             config.setAllowedHeaders(List.of("*"));
                             config.setAllowCredentials(true);
@@ -117,18 +111,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 new AntPathRequestMatcher("/api/auth/**"),
-
-                                new AntPathRequestMatcher("/h2-console/**"), // 👈 agregamos esto para evitar el error
-                                new AntPathRequestMatcher("/ws/**"),
-                                new AntPathRequestMatcher("/ws/info"))
+                                new AntPathRequestMatcher("/h2-console/**"),
+                                new AntPathRequestMatcher("/ws/**"))
                         .permitAll()
-                        
                         .anyRequest().authenticated())
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Necesario para ver el H2
-                                                                                       // console
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // H2-Console
                 .authenticationProvider(authProvider())
                 .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 
